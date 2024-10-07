@@ -3,7 +3,7 @@
 // Execute `rustlings hint threads3` or use the `hint` watch subcommand for a
 // hint.
 
-// I AM NOT DONE
+
 
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -26,41 +26,51 @@ impl Queue {
     }
 }
 
-fn send_tx(q: Queue, tx: mpsc::Sender<u32>) -> () {
-    let qc = Arc::new(q);
-    let qc1 = Arc::clone(&qc);
-    let qc2 = Arc::clone(&qc);
+fn send_tx(q: Queue, tx: mpsc::Sender<u32>) {  
+    let qc = Arc::new(q);  
+    let qc1 = Arc::clone(&qc);  
+    let qc2 = Arc::clone(&qc);  
 
-    thread::spawn(move || {
-        for val in &qc1.first_half {
-            println!("sending {:?}", val);
-            tx.send(*val).unwrap();
-            thread::sleep(Duration::from_secs(1));
-        }
-    });
+    // Clone the transmitter so each thread has its own transmitter handle.  
+    let tx1 = mpsc::Sender::clone(&tx);  
+    let tx2 = mpsc::Sender::clone(&tx);  
 
-    thread::spawn(move || {
-        for val in &qc2.second_half {
-            println!("sending {:?}", val);
-            tx.send(*val).unwrap();
-            thread::sleep(Duration::from_secs(1));
-        }
-    });
-}
+    // First thread sends the first half of the queue.  
+    thread::spawn(move || {  
+        for val in &qc1.first_half {  
+            println!("sending {:?}", val);  
+            tx1.send(*val).unwrap();  
+            thread::sleep(Duration::from_secs(1));  
+        }  
+        // Dropping this sender will help indicate that our side of the channel is closed.  
+        drop(tx1);  
+    });  
 
-fn main() {
-    let (tx, rx) = mpsc::channel();
-    let queue = Queue::new();
-    let queue_length = queue.length;
+    // Second thread sends the second half of the queue.  
+    thread::spawn(move || {  
+        for val in &qc2.second_half {  
+            println!("sending {:?}", val);  
+            tx2.send(*val).unwrap();  
+            thread::sleep(Duration::from_secs(1));  
+        }  
+        // Dropping this sender indicates that our side of the channel is closed.  
+        drop(tx2);  
+    });  
+}  
 
-    send_tx(queue, tx);
+fn main() {  
+    let (tx, rx) = mpsc::channel();  
+    let queue = Queue::new();  
+    let queue_length = queue.length;  
 
-    let mut total_received: u32 = 0;
-    for received in rx {
-        println!("Got: {}", received);
-        total_received += 1;
-    }
+    send_tx(queue, tx);  
 
-    println!("total numbers received: {}", total_received);
-    assert_eq!(total_received, queue_length)
-}
+    let mut total_received: u32 = 0;  
+    for received in rx {  
+        println!("Got: {}", received);  
+        total_received += 1;  
+    }  
+
+    println!("total numbers received: {}", total_received);  
+    assert_eq!(total_received, queue_length);  
+}  

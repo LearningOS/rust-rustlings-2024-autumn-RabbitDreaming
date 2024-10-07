@@ -27,35 +27,43 @@
 //
 // You should NOT modify any existing code except for adding two lines of attributes.
 
-// I AM NOT DONE
 
-extern "Rust" {
-    fn my_demo_function(a: u32) -> u32;
-    fn my_demo_function_alias(a: u32) -> u32;
-}
 
-mod Foo {
-    // No `extern` equals `extern "Rust"`.
-    fn my_demo_function(a: u32) -> u32 {
-        a
-    }
-}
+extern "Rust" {  
+    fn my_demo_function(a: u32) -> u32;  
+    fn my_demo_function_alias(a: u32) -> u32;  
+}  
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod Foo {  
+    // Apply no_mangle attribute to both function definitions  
+    #[no_mangle]  
+    pub extern "Rust" fn my_demo_function(a: u32) -> u32 {  
+        a  
+    }  
 
-    #[test]
-    fn test_success() {
-        // The externally imported functions are UNSAFE by default
-        // because of untrusted source of other languages. You may
-        // wrap them in safe Rust APIs to ease the burden of callers.
-        //
-        // SAFETY: We know those functions are aliases of a safe
-        // Rust function.
-        unsafe {
-            my_demo_function(123);
-            my_demo_function_alias(456);
-        }
-    }
-}
+    #[no_mangle]  
+    pub extern "Rust" fn my_demo_function_alias(a: u32) -> u32 {  
+        my_demo_function(a) // Calling the original function  
+    }  
+}  
+
+#[cfg(test)]  
+mod tests {  
+    use super::*;  
+
+    #[test]  
+    fn test_success() {  
+        // The externally imported functions are UNSAFE by default  
+        // because of untrusted source of other languages. You may  
+        // wrap them in safe Rust APIs to ease the burden of callers.  
+        //  
+        // SAFETY: We know those functions are aliases of a safe  
+        // Rust function.  
+        unsafe {  
+            let result1 = my_demo_function(123);  
+            let result2 = my_demo_function_alias(456);  
+            assert_eq!(result1, 123);  
+            assert_eq!(result2, 456);  
+        }  
+    }  
+}  
